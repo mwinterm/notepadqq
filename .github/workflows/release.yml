@@ -13,6 +13,10 @@ on:
       tag:
         description: 'Version tag (e.g. v1.0.0)'
         required: false
+      create_release:
+        description: 'Create a GitHub release with the DMG'
+        type: boolean
+        default: false
 
 permissions:
   contents: write
@@ -23,14 +27,14 @@ jobs:
     runs-on: macos-14          # Apple Silicon (M1) runner
     steps:
       - name: Checkout
-        uses: actions/checkout@v4
+        uses: actions/checkout@v5
         with:
           submodules: recursive
           fetch-depth: 0
 
       - name: Install dependencies (Qt 6)
         run: |
-          brew install qt uchardet pkg-config
+          brew install qt uchardet pkg-config 2>/dev/null || true
           QT_PREFIX="$(brew --prefix qt)"
           echo "${QT_PREFIX}/bin" >> "$GITHUB_PATH"
           echo "QT_PREFIX=${QT_PREFIX}" >> "$GITHUB_ENV"
@@ -99,7 +103,7 @@ jobs:
             "Notepadqq-${VERSION}-macos-arm64.dmg"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v4
+        uses: actions/upload-artifact@v5
         with:
           name: notepadqq-macos-arm64-dmg
           path: out/release/Notepadqq-*.dmg
@@ -109,4 +113,14 @@ jobs:
         if: github.event_name == 'release'
         uses: softprops/action-gh-release@v2
         with:
+          files: out/release/Notepadqq-*.dmg
+
+      - name: Create GitHub Release
+        if: github.event_name == 'workflow_dispatch' && inputs.create_release
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: v${{ steps.version.outputs.version }}
+          name: Notepadqq ${{ steps.version.outputs.version }}
+          draft: true
+          generate_release_notes: true
           files: out/release/Notepadqq-*.dmg

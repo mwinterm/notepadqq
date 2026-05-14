@@ -1,0 +1,196 @@
+name: Release
+
+on:
+  release:
+    types: [published]
+  workflow_dispatch:
+    inputs:
+      tag:
+        description: 'Tag to build (for manual runs; release jobs use the release tag automatically)'
+        required: false
+        default: ''
+
+permissions:
+  contents: write
+
+jobs:
+  # ---------------------------------------------------------------------------
+  # Linux build: produces an AppImage
+  # ---------------------------------------------------------------------------
+  build-linux:
+    name: Build Linux AppImage
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install build dependencies
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential \
+            pkg-config \
+            qtbase5-dev \
+            qttools5-dev-tools \
+            qtwebengine5-dev \
+            libqt5svg5-dev \
+            libqt5websockets5-dev \
+            libqt5webchannel5-dev \
+            libqt5x11extras5-dev \
+            libuchardet-dev \
+            libfuse2 \
+            wget \
+            file \
+            desktop-file-utils \
+            fuse \
+            zsync
+
+      - name: Configure
+        run: ./configure --prefix=/usr
+
+      - name: Build
+        run: make -j$(nproc)
+
+      - name: Stage install into AppDir
+        run: |
+          make install INSTALL_ROOT="${GITHUB_WORKSPACE}/AppDir"
+          # Sanity check
+          find AppDir -maxdepth 4 -type f -name 'notepadqq*' -print
+
+      - name: Download linuxdeploy tools
+        run: |
+          wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
+          wget -q https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
+          chmod +x linuxdeploy-x86_64.AppImage linuxdeploy-plugin-qt-x86_64.AppImage
+
+      - name: Resolve version
+        id: version
+        run: |
+          if [ -n "${{ github.event.release.tag_name }}" ]; then
+            VERSION="${{ github.event.release.tag_name }}"
+          elif [ -n "${{ github.event.inputs.tag }}" ]; then
+            VERSION="${{ github.event.inputs.tag }}"
+          else
+            VERSION="$(git describe --tags --always)"
+          fi
+          # Strip leading 'v' for filename hygiene
+          VERSION="${VERSION#v}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Build AppImage
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+          QML_SOURCES_PATHS: ${{ github.workspace }}/src
+        run: |
+          # linuxdeploy needs the binary to live at AppDir/usr/bin so it can
+          # patch RPATHs and resolve Qt deps. Notepadqq installs the real
+          # binary into /usr/lib/notepadqq/notepadqq-bin with a wrapper script
+          # in /usr/bin/notepadqq, so we point linuxdeploy at the wrapper via
+          # --custom-apprun and let the qt plugin pick up the inner binary.
+          ./linuxdeploy-x86_64.AppImage \
+            --appdir AppDir \
+            --plugin qt \
+            --desktop-file AppDir/usr/share/applications/notepadqq.desktop \
+            --icon-file AppDir/usr/share/icons/hicolor/256x256/apps/notepadqq.png \
+            --executable AppDir/usr/lib/notepadqq/notepadqq-bin \
+            --output appimage
+          # Rename the resulting AppImage to include the version
+          mv Notepadqq-*.AppImage "Notepadqq-${VERSION}-x86_64.AppImage" 2>/dev/null \
+            || mv Notepadqq*x86_64.AppImage "Notepadqq-${VERSION}-x86_64.AppImage"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: notepadqq-linux-appimage
+          path: Notepadqq-*.AppImage
+          if-no-files-found: error
+
+      - name: Attach to GitHub Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: Notepadqq-*.AppImage
+
+  # ---------------------------------------------------------------------------
+  # macOS build: produces a DMG
+  # ---------------------------------------------------------------------------
+  build-macos:
+    name: Build macOS DMG
+    runs-on: macos-13
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+        with:
+          submodules: recursive
+
+      - name: Install dependencies
+        run: |
+          brew install qt@5 uchardet pkg-config
+          echo "/usr/local/opt/qt@5/bin" >> "$GITHUB_PATH"
+
+      - name: Configure
+        env:
+          PKG_CONFIG_PATH: /usr/local/opt/qt@5/lib/pkgconfig
+        run: ./configure
+
+      - name: Build
+        run: make -j$(sysctl -n hw.ncpu)
+
+      - name: Bundle with macdeployqt
+        run: |
+          cd out/release
+          macdeployqt notepadqq.app \
+            -executable=notepadqq.app/Contents/MacOS/notepadqq
+          macdeployqt notepadqq.app \
+            -executable=notepadqq.app/Contents/Frameworks/QtWebEngineCore.framework/Versions/5/Helpers/QtWebEngineProcess.app/Contents/MacOS/QtWebEngineProcess
+
+      - name: Fix bundle paths
+        run: |
+          cd out/release
+          python3 ../../.travis/tools/macdeployqtfix/macdeployqtfix.py \
+            notepadqq.app/Contents/MacOS/notepadqq \
+            /usr/local/Cellar/qt@5/5.*
+          python3 ../../.travis/tools/macdeployqtfix/macdeployqtfix.py \
+            notepadqq.app/Contents/Frameworks/QtWebEngineCore.framework/Versions/5/Helpers/QtWebEngineProcess.app/Contents/MacOS/QtWebEngineProcess \
+            /usr/local/Cellar/qt@5/5.*
+
+      - name: Resolve version
+        id: version
+        run: |
+          if [ -n "${{ github.event.release.tag_name }}" ]; then
+            VERSION="${{ github.event.release.tag_name }}"
+          elif [ -n "${{ github.event.inputs.tag }}" ]; then
+            VERSION="${{ github.event.inputs.tag }}"
+          else
+            VERSION="$(git describe --tags --always)"
+          fi
+          VERSION="${VERSION#v}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Create DMG
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          cd out/release
+          mkdir dmgfolder
+          mv notepadqq.app dmgfolder/
+          ln -s /Applications ./dmgfolder/Applications
+          hdiutil create -fs HFS+ -format UDBZ \
+            -srcfolder ./dmgfolder \
+            -volname "Notepadqq ${VERSION}" \
+            "Notepadqq-${VERSION}-macos.dmg"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: notepadqq-macos-dmg
+          path: out/release/Notepadqq-*.dmg
+          if-no-files-found: error
+
+      - name: Attach to GitHub Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: out/release/Notepadqq-*.dmg

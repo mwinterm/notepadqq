@@ -64,7 +64,7 @@ public:
 
     BEGIN_GENERAL_CATEGORY(General)
         NQQ_SETTING(Localization,                   QString,    "")
-        NQQ_SETTING(WarnForDifferentIndentation,    bool,       true)
+        NQQ_SETTING(WarnForDifferentIndentation,    bool,       false)
         NQQ_SETTING(ExitOnLastTabClose,             bool,       false)
 
         NQQ_SETTING(CollectStatistics,              bool,       false)
@@ -115,7 +115,7 @@ public:
     END_CATEGORY(Extensions)
 
     BEGIN_CATEGORY(Languages)
-        NQQ_SETTING_WITH_KEY(IndentWithSpaces,      bool,   false)
+        NQQ_SETTING_WITH_KEY(IndentWithSpaces,      bool,   true)
         NQQ_SETTING_WITH_KEY(TabSize,               int,    4)
         NQQ_SETTING_WITH_KEY(UseDefaultSettings,    bool,   true)
     END_CATEGORY(Languages)

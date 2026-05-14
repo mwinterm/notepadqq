@@ -1,5 +1,6 @@
 #include "include/mainwindow.h"
 
+#include <QActionGroup>
 #include "include/EditorNS/bannerfilechanged.h"
 #include "include/EditorNS/bannerfileremoved.h"
 #include "include/EditorNS/bannerindentationdetected.h"
@@ -41,7 +42,7 @@
 #include <QtPrintSupport/QPrintPreviewDialog>
 #include <QtPromise>
 
-using namespace QtPromise;
+
 
 QList<MainWindow*> MainWindow::m_instances = QList<MainWindow*>();
 
@@ -374,7 +375,7 @@ void MainWindow::loadToolBar()
         toolbarItems = getDefaultToolBarString();
 
     auto actions = getActions();
-    auto parts = toolbarItems.split('|', QString::SkipEmptyParts);
+    auto parts = toolbarItems.split('|', Qt::SkipEmptyParts);
 
     for (const auto& part : parts) {
         if(part == "Separator") {
@@ -1688,7 +1689,7 @@ void MainWindow::on_editorMouseWheel(EditorTabWidget *tabWidget, int tab, QWheel
 {
     if (QApplication::keyboardModifiers() & Qt::ControlModifier) {
         qreal curZoom = tabWidget->editor(tab)->zoomFactor();
-        qreal diff = ev->delta() / 120;
+        qreal diff = ev->angleDelta().y() / 120;
         diff /= 10;
 
         // Increment/Decrement zoom factor by 0.1 at each step.
@@ -2331,7 +2332,7 @@ void MainWindow::on_actionLaunch_in_Chrome_triggered()
     }
 }
 */
-QPromise<QStringList> MainWindow::currentWordOrSelections()
+QtPromise::QPromise<QStringList> MainWindow::currentWordOrSelections()
 {
     auto editor = currentEditor();
     return editor->selectedTexts().then([=](QStringList selection){
@@ -2340,12 +2341,12 @@ QPromise<QStringList> MainWindow::currentWordOrSelections()
                 return QStringList(word);
             });
         } else {
-            return QPromise<QStringList>::resolve(selection);
+            return QtPromise::QPromise<QStringList>::resolve(selection);
         }
     });
 }
 
-QPromise<QString> MainWindow::currentWordOrSelection()
+QtPromise::QPromise<QString> MainWindow::currentWordOrSelection()
 {
     return currentWordOrSelections().then([=](QStringList terms){
         if (terms.isEmpty()) {

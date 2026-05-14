@@ -21,5 +21,6 @@ build-notepadqq-Desktop*
 
 /.qmake.stash
 /src/ui-tests/moc_predefs.h
+/src/ui-tests/ui-tests.app/
 
 /src/translations/*.qm

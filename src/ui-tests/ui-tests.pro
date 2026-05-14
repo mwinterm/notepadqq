@@ -4,6 +4,7 @@
 
 QT += testlib
 QT += core gui svg widgets printsupport network webenginewidgets webchannel websockets
+greaterThan(QT_MAJOR_VERSION, 5): QT += core5compat
 CONFIG += c++11
 TEMPLATE = app
 TARGET = ui-tests

@@ -77,7 +77,11 @@ QSize QSearchDockTitleButton::sizeHint() const
     return QSize(size, size);
 }
 
+#if QT_VERSION >= QT_VERSION_CHECK(6, 0, 0)
+void QSearchDockTitleButton::enterEvent(QEnterEvent *event)
+#else
 void QSearchDockTitleButton::enterEvent(QEvent *event)
+#endif
 {
     if (isEnabled()) update();
     QAbstractButton::enterEvent(event);
@@ -94,10 +98,10 @@ void QSearchDockTitleButton::paintEvent(QPaintEvent* /*evt*/)
     QPainter p(this);
 
     QStyleOptionToolButton opt;
-    opt.init(this);
+    opt.initFrom(this);
     opt.state |= QStyle::State_AutoRaise;
 
-    if (style()->styleHint(QStyle::SH_DockWidget_ButtonsHaveFrame, 0, this))
+    if (style()->styleHint(QStyle::SH_DockWidget_ButtonsHaveFrame, nullptr, this))
     {
         if (isEnabled() && underMouse() && !isChecked() && !isDown())
             opt.state |= QStyle::State_Raised;
@@ -109,11 +113,11 @@ void QSearchDockTitleButton::paintEvent(QPaintEvent* /*evt*/)
     }
 
     opt.icon = icon();
-    opt.subControls = 0;
-    opt.activeSubControls = 0;
+    opt.subControls = {};
+    opt.activeSubControls = {};
     opt.features = QStyleOptionToolButton::None;
     opt.arrowType = Qt::NoArrow;
-    int size = style()->pixelMetric(QStyle::PM_SmallIconSize, 0, this);
+    int size = style()->pixelMetric(QStyle::PM_SmallIconSize, nullptr, this);
     opt.iconSize = QSize(size, size);
     style()->drawComplexControl(QStyle::CC_ToolButton, &opt, &p, this);
 }
@@ -159,7 +163,7 @@ void showRegexInfo() {
 QLayout* AdvancedSearchDock::buildLeftTitlebar() {
 
     QLabel* label = new QLabel(tr("Advanced Search"));
-    label->setMaximumWidth(label->fontMetrics().width(label->text()));
+    label->setMaximumWidth(label->fontMetrics().horizontalAdvance(label->text()));
 
     m_btnClearHistory = new QToolButton;
     m_btnClearHistory->setIcon(IconProvider::fromTheme("edit-clear"));

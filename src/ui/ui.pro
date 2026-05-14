@@ -6,6 +6,7 @@
 
 QT       += core gui svg widgets printsupport network webenginewidgets webchannel websockets
 !macx: QT += dbus
+greaterThan(QT_MAJOR_VERSION, 5): QT += core5compat
 CONFIG += c++14 link_pkgconfig
 PKGCONFIG += uchardet
 

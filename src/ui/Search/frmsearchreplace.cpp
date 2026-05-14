@@ -1,5 +1,6 @@
 #include "include/Search/frmsearchreplace.h"
 
+#include <QActionGroup>
 #include "include/Search/searchstring.h"
 #include "include/iconprovider.h"
 #include "include/nqqsettings.h"
@@ -97,7 +98,9 @@ void frmSearchReplace::setSearchText(QString string)
       Workaround is to disable auto complete until the search box was manually edited
       which prevents the bug. Auto complete is enabled again in on_searchStringEdited.
     */
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     ui->cmbSearch->setAutoCompletion(false);
+#endif
 }
 
 void frmSearchReplace::setCurrentTab(Tabs tab)
@@ -384,8 +387,10 @@ void frmSearchReplace::on_searchStringEdited(const QString &/*text*/)
     }
 
     // Workaround. See comment in setSearchText().
+#if QT_VERSION < QT_VERSION_CHECK(6, 0, 0)
     ui->cmbSearch->setAutoCompletion(true);
     ui->cmbSearch->completer()->setCaseSensitivity(Qt::CaseSensitive);
+#endif
 }
 
 /**

@@ -81,21 +81,32 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          # Download linuxdeployqt
-          wget -q "https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage" -O linuxdeployqt
-          chmod +x linuxdeployqt
+          # Download linuxdeploy and its Qt plugin (supports Qt6)
+          wget -q "https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage" -O linuxdeploy
+          wget -q "https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage" -O linuxdeploy-plugin-qt
+          chmod +x linuxdeploy linuxdeploy-plugin-qt
 
-          # Create desktop entry and icon in AppDir if not already installed
+          # Ensure desktop entry and icon are in AppDir
           mkdir -p AppDir/usr/share/applications AppDir/usr/share/icons/hicolor/scalable/apps
           cp support_files/shortcuts/notepadqq.desktop AppDir/usr/share/applications/
           cp support_files/icons/hicolor/scalable/apps/notepadqq.svg AppDir/usr/share/icons/hicolor/scalable/apps/ 2>/dev/null || true
 
-          # Run linuxdeployqt
-          ./linuxdeployqt AppDir/usr/share/applications/notepadqq.desktop \
-            -executable=AppDir/usr/lib/notepadqq/notepadqq-bin \
-            -appimage \
-            -qmake="${QMAKE}" \
-            -extra-plugins=webenginecore,websockets,webchannel
+          # The installed launcher at usr/bin/notepadqq is a shell script;
+          # replace it with a symlink to the real binary so linuxdeploy can
+          # trace ELF dependencies.
+          rm -f AppDir/usr/bin/notepadqq
+          ln -s ../lib/notepadqq/notepadqq-bin AppDir/usr/bin/notepadqq
+
+          # Tell the Qt plugin where to find qmake
+          export QMAKE="${QMAKE}"
+
+          # Build the AppImage
+          ./linuxdeploy \
+            --appdir AppDir \
+            --desktop-file AppDir/usr/share/applications/notepadqq.desktop \
+            --icon-file AppDir/usr/share/icons/hicolor/scalable/apps/notepadqq.svg \
+            --plugin qt \
+            --output appimage
 
       - name: Rename AppImage
         env:

@@ -1,4 +1,4 @@
-name: Build & Release
+name: Linux Build
 
 on:
   push:
@@ -112,106 +112,13 @@ jobs:
           path: Notepadqq-*.AppImage
           if-no-files-found: error
 
-  build-macos:
-    name: Build macOS DMG (arm64)
-    runs-on: macos-14          # Apple Silicon (M1) runner
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v6
-        with:
-          submodules: recursive
-          fetch-depth: 0
-
-      - name: Install dependencies (Qt 6)
-        run: |
-          brew install qt uchardet pkg-config 2>/dev/null || true
-          QT_PREFIX="$(brew --prefix qt)"
-          echo "${QT_PREFIX}/bin" >> "$GITHUB_PATH"
-          echo "QT_PREFIX=${QT_PREFIX}" >> "$GITHUB_ENV"
-          echo "PKG_CONFIG_PATH=${QT_PREFIX}/lib/pkgconfig:$(brew --prefix uchardet)/lib/pkgconfig" >> "$GITHUB_ENV"
-
-      - name: Configure
-        run: |
-          ./configure \
-            --qmake="${QT_PREFIX}/bin/qmake" \
-            --lrelease="${QT_PREFIX}/bin/lrelease"
-
-      - name: Build
-        run: make -j$(sysctl -n hw.ncpu)
-
-      - name: Bundle with macdeployqt
-        run: |
-          cd out/release
-          macdeployqt notepadqq.app \
-            -executable=notepadqq.app/Contents/MacOS/notepadqq
-          # Qt 6 WebEngine helper (path differs from Qt 5)
-          HELPER_PATH="$(find notepadqq.app -name QtWebEngineProcess -type f 2>/dev/null | head -1)"
-          if [ -n "$HELPER_PATH" ]; then
-            echo "Bundling WebEngine helper: $HELPER_PATH"
-            macdeployqt notepadqq.app -executable="$HELPER_PATH"
-          fi
-
-      - name: Fix bundle paths
-        continue-on-error: true
-        run: |
-          cd out/release
-          QT_CELLAR="$(brew --cellar qt)/"*
-          python3 ../../.travis/tools/macdeployqtfix/macdeployqtfix.py \
-            notepadqq.app/Contents/MacOS/notepadqq \
-            ${QT_CELLAR}
-          HELPER_PATH="$(find notepadqq.app -name QtWebEngineProcess -type f 2>/dev/null | head -1)"
-          if [ -n "$HELPER_PATH" ]; then
-            python3 ../../.travis/tools/macdeployqtfix/macdeployqtfix.py \
-              "$HELPER_PATH" \
-              ${QT_CELLAR}
-          fi
-
-      - name: Resolve version
-        id: version
-        run: |
-          if [ -n "${{ github.event.release.tag_name }}" ]; then
-            VERSION="${{ github.event.release.tag_name }}"
-          elif [ -n "${{ github.event.inputs.tag }}" ]; then
-            VERSION="${{ github.event.inputs.tag }}"
-          else
-            VERSION="$(git describe --tags --always)"
-          fi
-          VERSION="${VERSION#v}"
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-
-      - name: Create DMG
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          cd out/release
-          mkdir dmgfolder
-          mv notepadqq.app dmgfolder/
-          ln -s /Applications ./dmgfolder/Applications
-          hdiutil create -fs HFS+ -format UDBZ \
-            -srcfolder ./dmgfolder \
-            -volname "Notepadqq ${VERSION}" \
-            "Notepadqq-${VERSION}-macos-arm64.dmg"
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v6
-        with:
-          name: notepadqq-macos-arm64-dmg
-          path: out/release/Notepadqq-*.dmg
-          if-no-files-found: error
-
-      - name: Attach to GitHub Release
-        if: github.event_name == 'release'
-        uses: softprops/action-gh-release@v3
-        with:
-          files: out/release/Notepadqq-*.dmg
-
   release:
-    name: Publish Release
+    name: Create Draft Release
     if: github.event_name == 'workflow_dispatch' && inputs.create_release
-    needs: [build-linux, build-macos]
+    needs: [build-linux]
     runs-on: ubuntu-latest
     steps:
-      - name: Download all artifacts
+      - name: Download artifacts
         uses: actions/download-artifact@v6
         with:
           path: artifacts
@@ -220,11 +127,7 @@ jobs:
       - name: Resolve version
         id: version
         run: |
-          # Extract version from artifact filename
-          VERSION="$(ls artifacts/Notepadqq-*-macos-arm64.dmg 2>/dev/null | head -1 | sed 's/.*Notepadqq-\(.*\)-macos-arm64.dmg/\1/')"
-          if [ -z "$VERSION" ]; then
-            VERSION="$(ls artifacts/Notepadqq-*-linux-x86_64.AppImage 2>/dev/null | head -1 | sed 's/.*Notepadqq-\(.*\)-linux-x86_64.AppImage/\1/')"
-          fi
+          VERSION="$(ls artifacts/Notepadqq-*-linux-x86_64.AppImage 2>/dev/null | head -1 | sed 's/.*Notepadqq-\(.*\)-linux-x86_64.AppImage/\1/')"
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
@@ -235,5 +138,4 @@ jobs:
           draft: true
           generate_release_notes: true
           files: |
-            artifacts/Notepadqq-*.dmg
             artifacts/Notepadqq-*.AppImage

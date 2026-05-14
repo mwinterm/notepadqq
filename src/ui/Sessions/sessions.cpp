@@ -128,7 +128,7 @@ std::vector<ViewData> SessionReader::readData(bool* outSuccess) {
     std::vector<ViewData> result;
 
     if (m_reader.readNextStartElement()) {
-        if (m_reader.name() == "Notepadqq") {
+        if (m_reader.name() == QLatin1String("Notepadqq")) {
             result = readViewData();
         }
         else
@@ -149,7 +149,7 @@ std::vector<ViewData> SessionReader::readViewData() {
     std::vector<ViewData> result;
 
     while (m_reader.readNextStartElement()) {
-        if (m_reader.name() == "View") {
+        if (m_reader.name() == QLatin1String("View")) {
             ViewData vd;
             vd.tabs = readTabData();
             result.push_back(vd);
@@ -166,7 +166,7 @@ std::vector<TabData> SessionReader::readTabData() {
     std::vector<TabData> result;
 
     while (m_reader.readNextStartElement()) {
-        if (m_reader.name() == "Tab") {
+        if (m_reader.name() == QLatin1String("Tab")) {
             const QXmlStreamAttributes& attrs = m_reader.attributes();
 
             TabData td;

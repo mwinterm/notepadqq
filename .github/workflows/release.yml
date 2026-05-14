@@ -39,6 +39,7 @@ jobs:
             build-essential pkg-config \
             qt6-base-dev qt6-base-dev-tools qt6-tools-dev qt6-tools-dev-tools \
             qt6-webengine-dev qt6-webengine-dev-tools \
+            qt6-l10n-tools \
             libqt6websockets6-dev libqt6svg6-dev libqt6core5compat6-dev \
             libqt6webchannel6-dev \
             libuchardet-dev \
@@ -46,7 +47,7 @@ jobs:
             libfuse2
           # Locate qmake6 and lrelease6
           QMAKE="$(command -v qmake6 2>/dev/null || command -v qmake 2>/dev/null)"
-          LRELEASE="$(command -v lrelease6 2>/dev/null || find /usr/lib/qt6/bin -name lrelease 2>/dev/null | head -1 || command -v lrelease 2>/dev/null)"
+          LRELEASE="$(command -v lrelease6 2>/dev/null || command -v lrelease 2>/dev/null || echo /usr/lib/qt6/bin/lrelease)"
           echo "QMAKE=${QMAKE}" >> "$GITHUB_ENV"
           echo "LRELEASE=${LRELEASE}" >> "$GITHUB_ENV"
 

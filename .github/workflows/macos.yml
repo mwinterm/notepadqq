@@ -34,7 +34,7 @@ jobs:
 
       - name: Install dependencies (Qt 6)
         run: |
-          brew install qt uchardet pkg-config 2>/dev/null || true
+          brew install qt cmake uchardet pkg-config 2>/dev/null || true
           QT_PREFIX="$(brew --prefix qt)"
           echo "${QT_PREFIX}/bin" >> "$GITHUB_PATH"
           echo "QT_PREFIX=${QT_PREFIX}" >> "$GITHUB_ENV"
@@ -43,11 +43,11 @@ jobs:
       - name: Configure
         run: |
           ./configure \
-            --qmake="${QT_PREFIX}/bin/qmake" \
-            --lrelease="${QT_PREFIX}/bin/lrelease"
+            --prefix=/usr/local \
+            -- -DCMAKE_PREFIX_PATH="${QT_PREFIX}"
 
       - name: Build
-        run: make -j$(sysctl -n hw.ncpu)
+        run: make
 
       - name: Bundle with macdeployqt
         run: |

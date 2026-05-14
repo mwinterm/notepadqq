@@ -10,11 +10,13 @@ Thumbs.db
 *.bak
 *.old
 
-/Makefile
-/src/ui/Makefile
-build-notepadqq-Desktop*
-
+/build
 /out
+
+# Legacy qmake-generated files
+/src/ui/Makefile
+/.qmake.stash
+
 /src/ui/ui.pro.user
 /src/ui/ui.pro.user.*
 /notepadqq.pro.user

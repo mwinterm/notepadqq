@@ -36,7 +36,7 @@ jobs:
         run: |
           sudo apt-get update
           sudo apt-get install -y --no-install-recommends \
-            build-essential pkg-config \
+            build-essential pkg-config cmake \
             qt6-base-dev qt6-base-dev-tools qt6-tools-dev qt6-tools-dev-tools \
             qt6-webengine-dev qt6-webengine-dev-tools \
             qt6-l10n-tools \
@@ -45,24 +45,18 @@ jobs:
             libuchardet-dev \
             libgl1-mesa-dev \
             libfuse2
-          # Locate qmake6 and lrelease6
+          # Locate qmake6 for linuxdeploy Qt plugin
           QMAKE="$(command -v qmake6 2>/dev/null || command -v qmake 2>/dev/null)"
-          LRELEASE="$(command -v lrelease6 2>/dev/null || echo /usr/lib/qt6/bin/lrelease)"
           echo "QMAKE=${QMAKE}" >> "$GITHUB_ENV"
-          echo "LRELEASE=${LRELEASE}" >> "$GITHUB_ENV"
 
       - name: Configure
-        run: |
-          ./configure \
-            --prefix=/usr \
-            --qmake="${QMAKE}" \
-            --lrelease="${LRELEASE}"
+        run: ./configure --prefix=/usr
 
       - name: Build
-        run: make -j$(nproc)
+        run: make
 
       - name: Install to AppDir
-        run: make install INSTALL_ROOT="$PWD/AppDir"
+        run: DESTDIR="$PWD/AppDir" cmake --install build
 
       - name: Resolve version
         id: version

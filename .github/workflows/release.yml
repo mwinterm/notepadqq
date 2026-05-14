@@ -25,11 +25,9 @@ jobs:
   build-macos:
     name: Build macOS DMG (arm64)
     runs-on: macos-14          # Apple Silicon (M1) runner
-    env:
-      FORCE_JAVASCRIPT_ACTIONS_TO_NODE24: true
     steps:
       - name: Checkout
-        uses: actions/checkout@v5
+        uses: actions/checkout@v6
         with:
           submodules: recursive
           fetch-depth: 0
@@ -105,7 +103,7 @@ jobs:
             "Notepadqq-${VERSION}-macos-arm64.dmg"
 
       - name: Upload artifact
-        uses: actions/upload-artifact@v5
+        uses: actions/upload-artifact@v6
         with:
           name: notepadqq-macos-arm64-dmg
           path: out/release/Notepadqq-*.dmg

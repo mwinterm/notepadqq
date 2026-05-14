@@ -242,8 +242,9 @@ add_custom_command(TARGET ${EXE_NAME} POST_BUILD
 if(NOT APPLE)
     include(GNUInstallDirs)
 
-    # Binary
-    install(TARGETS ${EXE_NAME} DESTINATION "${CMAKE_INSTALL_LIBDIR}/notepadqq")
+    # Binary – use "lib" explicitly (not CMAKE_INSTALL_LIBDIR which may
+    # resolve to lib/x86_64-linux-gnu) to match the launcher script expectation
+    install(TARGETS ${EXE_NAME} DESTINATION "lib/notepadqq")
 
     # Launcher script
     install(PROGRAMS "${CMAKE_SOURCE_DIR}/support_files/launch/notepadqq"

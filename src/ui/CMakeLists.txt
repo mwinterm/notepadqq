@@ -126,6 +126,9 @@ set(FORMS
 )
 
 # ---------- translations ----------
+# The .qm files are embedded via resources.qrc which references them at
+# ../translations/*.qm (relative to src/ui/).  We run lrelease at build time
+# to generate them in-tree, matching the old qmake behaviour.
 set(TS_FILES
     ../translations/notepadqq_de.ts
     ../translations/notepadqq_es.ts
@@ -141,7 +144,22 @@ set(TS_FILES
     ../translations/notepadqq_uk.ts
     ../translations/notepadqq_zh.ts
 )
-qt_add_translation(QM_FILES ${TS_FILES})
+
+# Build absolute paths and derive .qm paths
+set(QM_FILES "")
+foreach(TS_FILE ${TS_FILES})
+    get_filename_component(TS_ABS "${TS_FILE}" ABSOLUTE)
+    string(REGEX REPLACE "\\.ts$" ".qm" QM_ABS "${TS_ABS}")
+    list(APPEND QM_FILES "${QM_ABS}")
+    add_custom_command(
+        OUTPUT "${QM_ABS}"
+        COMMAND Qt6::lrelease "${TS_ABS}" -qm "${QM_ABS}"
+        DEPENDS "${TS_ABS}"
+        COMMENT "Compiling translation ${TS_FILE}"
+        VERBATIM
+    )
+endforeach()
+add_custom_target(translations ALL DEPENDS ${QM_FILES})
 
 # ---------- target ----------
 if(APPLE)
@@ -157,7 +175,6 @@ if(APPLE)
     qt_add_executable(${EXE_NAME} MACOSX_BUNDLE
         ${SOURCES} ${HEADERS} ${FORMS}
         resources.qrc
-        ${QM_FILES}
         ${APP_ICON_MACOS}
     )
     set_target_properties(${EXE_NAME} PROPERTIES
@@ -167,9 +184,11 @@ else()
     qt_add_executable(${EXE_NAME}
         ${SOURCES} ${HEADERS} ${FORMS}
         resources.qrc
-        ${QM_FILES}
     )
 endif()
+
+# Ensure translations are built before the main target (qrc embeds the .qm files)
+add_dependencies(${EXE_NAME} translations)
 
 target_include_directories(${EXE_NAME} PRIVATE
     ${CMAKE_CURRENT_SOURCE_DIR}

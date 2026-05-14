@@ -37,6 +37,7 @@ jobs:
           sudo apt-get install -y --no-install-recommends \
             build-essential \
             pkg-config \
+            qmake6 \
             qt6-base-dev \
             qt6-base-dev-tools \
             qt6-tools-dev \
@@ -56,11 +57,25 @@ jobs:
             desktop-file-utils
 
       - name: Configure
+        shell: bash
         run: |
+          set +e
           QMAKE=$(command -v qmake6)
-          LRELEASE=$(command -v lrelease6 || command -v /usr/lib/qt6/libexec/lrelease || command -v lrelease)
+          [ -z "$QMAKE" ] && [ -x /usr/lib/qt6/bin/qmake6 ] && QMAKE=/usr/lib/qt6/bin/qmake6
+          [ -z "$QMAKE" ] && [ -x /usr/lib/qt6/bin/qmake ]  && QMAKE=/usr/lib/qt6/bin/qmake
+          LRELEASE=$(command -v lrelease6)
+          [ -z "$LRELEASE" ] && [ -x /usr/lib/qt6/libexec/lrelease ] && LRELEASE=/usr/lib/qt6/libexec/lrelease
+          [ -z "$LRELEASE" ] && [ -x /usr/lib/qt6/bin/lrelease ]    && LRELEASE=/usr/lib/qt6/bin/lrelease
+          set -e
+          if [ -z "$QMAKE" ] || [ -z "$LRELEASE" ]; then
+            echo "Could not locate qmake6/lrelease6." >&2
+            ls -la /usr/lib/qt6/bin /usr/lib/qt6/libexec /usr/bin | grep -E 'qmake|lrelease' || true
+            exit 1
+          fi
           echo "Using QMAKE=$QMAKE"
           echo "Using LRELEASE=$LRELEASE"
+          # Expose to later steps that build the AppImage with linuxdeploy-plugin-qt.
+          echo "QMAKE=$QMAKE" >> "$GITHUB_ENV"
           ./configure --prefix=/usr --qmake="$QMAKE" --lrelease="$LRELEASE"
 
       - name: Build
@@ -94,8 +109,8 @@ jobs:
         env:
           VERSION: ${{ steps.version.outputs.version }}
         run: |
-          # Point linuxdeploy-plugin-qt at Qt 6 explicitly.
-          export QMAKE="$(command -v qmake6)"
+          # QMAKE was exported to GITHUB_ENV in the Configure step.
+          echo "Using QMAKE=$QMAKE for linuxdeploy-plugin-qt"
           ./linuxdeploy-x86_64.AppImage \
             --appdir AppDir \
             --plugin qt \

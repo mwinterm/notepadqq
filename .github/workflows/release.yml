@@ -1,154 +1,35 @@
-name: Build & Release
+name: Build macOS (Apple Silicon)
 
 on:
-  release:
-    types: [published]
   push:
     branches: [master, macos-port]
     tags: ['v*']
   pull_request:
     branches: [master, macos-port]
+  release:
+    types: [published]
   workflow_dispatch:
     inputs:
       tag:
-        description: 'Tag to build (for manual runs; release jobs use the release tag automatically)'
+        description: 'Version tag (e.g. v1.0.0)'
         required: false
-        default: ''
 
 permissions:
   contents: write
 
 jobs:
-  # ---------------------------------------------------------------------------
-  # Linux build: produces an AppImage (Qt 6)
-  # ---------------------------------------------------------------------------
-  build-linux:
-    name: Build Linux AppImage
-    runs-on: ubuntu-24.04
-    steps:
-      - name: Checkout
-        uses: actions/checkout@v4
-        with:
-          submodules: recursive
-
-      - name: Install build dependencies (Qt 6)
-        run: |
-          sudo apt-get update
-          sudo apt-get install -y --no-install-recommends \
-            build-essential \
-            pkg-config \
-            qmake6 \
-            qt6-base-dev \
-            qt6-base-dev-tools \
-            qt6-tools-dev \
-            qt6-tools-dev-tools \
-            qt6-l10n-tools \
-            qt6-webengine-dev \
-            qt6-webengine-dev-tools \
-            libqt6webenginecore6-bin \
-            qt6-websockets-dev \
-            libqt6svg6-dev \
-            libqt6core5compat6-dev \
-            libgl1-mesa-dev \
-            libuchardet-dev \
-            libfuse2t64 \
-            wget \
-            file \
-            desktop-file-utils
-
-      - name: Configure
-        shell: bash
-        run: |
-          set +e
-          QMAKE=$(command -v qmake6)
-          [ -z "$QMAKE" ] && [ -x /usr/lib/qt6/bin/qmake6 ] && QMAKE=/usr/lib/qt6/bin/qmake6
-          [ -z "$QMAKE" ] && [ -x /usr/lib/qt6/bin/qmake ]  && QMAKE=/usr/lib/qt6/bin/qmake
-          LRELEASE=$(command -v lrelease6)
-          [ -z "$LRELEASE" ] && [ -x /usr/lib/qt6/libexec/lrelease ] && LRELEASE=/usr/lib/qt6/libexec/lrelease
-          [ -z "$LRELEASE" ] && [ -x /usr/lib/qt6/bin/lrelease ]    && LRELEASE=/usr/lib/qt6/bin/lrelease
-          set -e
-          if [ -z "$QMAKE" ] || [ -z "$LRELEASE" ]; then
-            echo "Could not locate qmake6/lrelease6." >&2
-            ls -la /usr/lib/qt6/bin /usr/lib/qt6/libexec /usr/bin | grep -E 'qmake|lrelease' || true
-            exit 1
-          fi
-          echo "Using QMAKE=$QMAKE"
-          echo "Using LRELEASE=$LRELEASE"
-          # Expose to later steps that build the AppImage with linuxdeploy-plugin-qt.
-          echo "QMAKE=$QMAKE" >> "$GITHUB_ENV"
-          ./configure --prefix=/usr --qmake="$QMAKE" --lrelease="$LRELEASE"
-
-      - name: Build
-        run: make -j$(nproc)
-
-      - name: Stage install into AppDir
-        run: |
-          make install INSTALL_ROOT="${GITHUB_WORKSPACE}/AppDir"
-          find AppDir -maxdepth 5 -type f -name 'notepadqq*' -print
-
-      - name: Download linuxdeploy tools
-        run: |
-          wget -q https://github.com/linuxdeploy/linuxdeploy/releases/download/continuous/linuxdeploy-x86_64.AppImage
-          wget -q https://github.com/linuxdeploy/linuxdeploy-plugin-qt/releases/download/continuous/linuxdeploy-plugin-qt-x86_64.AppImage
-          chmod +x linuxdeploy-x86_64.AppImage linuxdeploy-plugin-qt-x86_64.AppImage
-
-      - name: Resolve version
-        id: version
-        run: |
-          if [ -n "${{ github.event.release.tag_name }}" ]; then
-            VERSION="${{ github.event.release.tag_name }}"
-          elif [ -n "${{ github.event.inputs.tag }}" ]; then
-            VERSION="${{ github.event.inputs.tag }}"
-          else
-            VERSION="$(git describe --tags --always)"
-          fi
-          VERSION="${VERSION#v}"
-          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
-
-      - name: Build AppImage
-        env:
-          VERSION: ${{ steps.version.outputs.version }}
-        run: |
-          # QMAKE was exported to GITHUB_ENV in the Configure step.
-          echo "Using QMAKE=$QMAKE for linuxdeploy-plugin-qt"
-          ./linuxdeploy-x86_64.AppImage \
-            --appdir AppDir \
-            --plugin qt \
-            --desktop-file AppDir/usr/share/applications/notepadqq.desktop \
-            --icon-file AppDir/usr/share/icons/hicolor/256x256/apps/notepadqq.png \
-            --executable AppDir/usr/lib/notepadqq/notepadqq-bin \
-            --output appimage
-          mv Notepadqq-*.AppImage "Notepadqq-${VERSION}-x86_64.AppImage" 2>/dev/null \
-            || mv Notepadqq*x86_64.AppImage "Notepadqq-${VERSION}-x86_64.AppImage"
-
-      - name: Upload artifact
-        uses: actions/upload-artifact@v4
-        with:
-          name: notepadqq-linux-appimage
-          path: Notepadqq-*.AppImage
-          if-no-files-found: error
-
-      - name: Attach to GitHub Release
-        if: github.event_name == 'release'
-        uses: softprops/action-gh-release@v2
-        with:
-          files: Notepadqq-*.AppImage
-
-  # ---------------------------------------------------------------------------
-  # macOS build: produces a DMG (Qt 6)
-  # ---------------------------------------------------------------------------
   build-macos:
-    name: Build macOS DMG
-    runs-on: macos-13
+    name: Build macOS DMG (arm64)
+    runs-on: macos-14          # Apple Silicon (M1) runner
     steps:
       - name: Checkout
         uses: actions/checkout@v4
         with:
           submodules: recursive
+          fetch-depth: 0
 
       - name: Install dependencies (Qt 6)
         run: |
-          brew update
           brew install qt uchardet pkg-config
           QT_PREFIX="$(brew --prefix qt)"
           echo "${QT_PREFIX}/bin" >> "$GITHUB_PATH"
@@ -167,32 +48,28 @@ jobs:
       - name: Bundle with macdeployqt
         run: |
           cd out/release
-          # In Qt 6 the WebEngine helper lives under
-          # QtWebEngineCore.framework/Helpers (no Versions/5 segment).
-          HELPER_PATH="$(find notepadqq.app/Contents/Frameworks/QtWebEngineCore.framework \
-                          -path '*Helpers/QtWebEngineProcess.app/Contents/MacOS/QtWebEngineProcess' \
-                          -print -quit)"
-          echo "WebEngine helper: $HELPER_PATH"
           macdeployqt notepadqq.app \
             -executable=notepadqq.app/Contents/MacOS/notepadqq
+          # Qt 6 WebEngine helper (path differs from Qt 5)
+          HELPER_PATH="$(find notepadqq.app -name QtWebEngineProcess -type f 2>/dev/null | head -1)"
           if [ -n "$HELPER_PATH" ]; then
+            echo "Bundling WebEngine helper: $HELPER_PATH"
             macdeployqt notepadqq.app -executable="$HELPER_PATH"
           fi
 
       - name: Fix bundle paths
+        continue-on-error: true
         run: |
           cd out/release
-          HELPER_PATH="$(find notepadqq.app/Contents/Frameworks/QtWebEngineCore.framework \
-                          -path '*Helpers/QtWebEngineProcess.app/Contents/MacOS/QtWebEngineProcess' \
-                          -print -quit)"
-          QT_CELLAR_GLOB="$(brew --cellar qt)/*"
+          QT_CELLAR="$(brew --cellar qt)/"*
           python3 ../../.travis/tools/macdeployqtfix/macdeployqtfix.py \
             notepadqq.app/Contents/MacOS/notepadqq \
-            ${QT_CELLAR_GLOB}
+            ${QT_CELLAR}
+          HELPER_PATH="$(find notepadqq.app -name QtWebEngineProcess -type f 2>/dev/null | head -1)"
           if [ -n "$HELPER_PATH" ]; then
             python3 ../../.travis/tools/macdeployqtfix/macdeployqtfix.py \
               "$HELPER_PATH" \
-              ${QT_CELLAR_GLOB}
+              ${QT_CELLAR}
           fi
 
       - name: Resolve version
@@ -219,12 +96,12 @@ jobs:
           hdiutil create -fs HFS+ -format UDBZ \
             -srcfolder ./dmgfolder \
             -volname "Notepadqq ${VERSION}" \
-            "Notepadqq-${VERSION}-macos.dmg"
+            "Notepadqq-${VERSION}-macos-arm64.dmg"
 
       - name: Upload artifact
         uses: actions/upload-artifact@v4
         with:
-          name: notepadqq-macos-dmg
+          name: notepadqq-macos-arm64-dmg
           path: out/release/Notepadqq-*.dmg
           if-no-files-found: error
 

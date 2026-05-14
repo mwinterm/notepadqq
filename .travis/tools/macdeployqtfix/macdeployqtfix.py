@@ -14,13 +14,13 @@ import re
 from collections import namedtuple
 
 
-QTLIB_NAME_REGEX = r'^(?:@executable_path)?/.*/(Qt[a-zA-Z]*).framework/(?:Versions/\d/)?\1$'
+QTLIB_NAME_REGEX = r'^(?:@executable_path)?/.*/(Qt[a-zA-Z0-9]*).framework/(?:Versions/([A-Za-z0-9]+)/)?\1$'
 QTLIB_NORMALIZED = r'$prefix/Frameworks/$qtlib.framework/Versions/$qtversion/$qtlib'
 
 QTPLUGIN_NAME_REGEX = r'^(?:@executable_path)?/.*/[pP]lug[iI]ns/(.*)/(.*).dylib$'
 QTPLUGIN_NORMALIZED = r'$prefix/PlugIns/$plugintype/$pluginname.dylib'
 
-BREWLIB_REGEX = r'^/usr/local/.*/(.*)'
+BREWLIB_REGEX = r'^(?:/usr/local|/opt/homebrew)/.*/(.*)'
 BREWLIB_NORMALIZED = r'$prefix/Frameworks/$brewlib'
 
 
@@ -162,7 +162,7 @@ def normalize_qtlib_name(filename):
 
     # qtlib normalization settings
     qtlib = rgxret.groups()[0]
-    qtversion = 5
+    qtversion = rgxret.groups()[1] if rgxret.groups()[1] else 'A'
 
     templ = Template(QTLIB_NORMALIZED)
 

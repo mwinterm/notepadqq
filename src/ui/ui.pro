@@ -4,7 +4,8 @@
 #
 #-------------------------------------------------
 
-QT       += core gui svg widgets printsupport network webenginewidgets webchannel websockets dbus
+QT       += core gui svg widgets printsupport network webenginewidgets webchannel websockets
+!macx: QT += dbus
 CONFIG += c++14 link_pkgconfig
 PKGCONFIG += uchardet
 
@@ -54,6 +55,7 @@ isEmpty(LRELEASE) {
 }
 macx {
     APPDATADIR = "$$DESTDIR/$${TARGET}.app/Contents/Resources"
+    QMAKE_INFO_PLIST = Info.plist
 }
 
 INSTALLFILESDIR = ../../support_files

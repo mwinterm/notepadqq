@@ -119,9 +119,15 @@ void KeyGrabber::keyPressEvent(QKeyEvent* event)
         return;
     }
 
+#ifdef Q_OS_MACX
+    if (modifiers & Qt::MetaModifier) grab.append("Cmd+");
+    if (modifiers & Qt::ControlModifier) grab.append("Ctrl+");
+    if (modifiers & Qt::AltModifier) grab.append("Option+");
+#else
     if (modifiers & Qt::ControlModifier) grab.append("Ctrl+");
     if (modifiers & Qt::AltModifier) grab.append("Alt+");
     if (modifiers & Qt::MetaModifier) grab.append("Meta+");
+#endif
     if (modifiers & Qt::ShiftModifier) grab.append("Shift+");
     
     switch(event->key()) {

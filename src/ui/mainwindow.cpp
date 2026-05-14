@@ -56,6 +56,14 @@ MainWindow::MainWindow(const QString &workingDirectory, const QStringList &argum
     ui->setupUi(this);
     setAttribute(Qt::WA_DeleteOnClose);
 
+#ifdef Q_OS_MACX
+    // Move standard actions to the macOS application menu
+    ui->actionAbout_Notepadqq->setMenuRole(QAction::AboutRole);
+    ui->actionPreferences->setMenuRole(QAction::PreferencesRole);
+    ui->actionExit->setMenuRole(QAction::QuitRole);
+    ui->actionExit->setShortcut(QKeySequence::Quit);
+#endif
+
     MainWindow::m_instances.append(this);
 
     // Gets company name from QCoreApplication::setOrganizationName(). Same for app name.
@@ -651,14 +659,26 @@ void MainWindow::keyPressEvent(QKeyEvent *ev)
     } else if (ev->key() >= Qt::Key_1 && ev->key() <= Qt::Key_9
                && QApplication::keyboardModifiers().testFlag(Qt::AltModifier)) {
         m_topEditorContainer->currentTabWidget()->setCurrentIndex(ev->key() - Qt::Key_1);
+
+#ifdef Q_OS_MACX
+    } else if (QApplication::keyboardModifiers().testFlag(Qt::MetaModifier)
+               && ev->key() == Qt::Key_PageDown) {
+#else
     } else if (QApplication::keyboardModifiers().testFlag(Qt::ControlModifier)
                && ev->key() == Qt::Key_PageDown) {
+#endif
         // switch to the next tab to the right or wrap around if last
         EditorTabWidget *curTabWidget = m_topEditorContainer->currentTabWidget();
         int nextTabIndex = (curTabWidget->currentIndex() + 1) % curTabWidget->count();
         curTabWidget->setCurrentIndex(nextTabIndex);
+
+#ifdef Q_OS_MACX
+    } else if (QApplication::keyboardModifiers().testFlag(Qt::MetaModifier)
+               && ev->key() == Qt::Key_PageUp) {
+#else
     } else if (QApplication::keyboardModifiers().testFlag(Qt::ControlModifier)
                && ev->key() == Qt::Key_PageUp) {
+#endif
         // switch to the previous tab or wrap around if first
         EditorTabWidget *curTabWidget = m_topEditorContainer->currentTabWidget();
         int prevTabIndex = (curTabWidget->currentIndex() + curTabWidget->count() - 1)

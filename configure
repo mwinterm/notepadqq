@@ -162,6 +162,10 @@ check pkg-config pkg-config 1
 
 # check for libraries via pkg-config
 libraries="Qt5Core Qt5Gui Qt5Network Qt5WebEngine Qt5Widgets Qt5WebEngineWidgets Qt5PrintSupport Qt5Svg Qt5WebSockets Qt5WebChannel uchardet"
+# Add Qt5DBus only on non-macOS platforms
+if [ "$(uname -s)" != "Darwin" ]; then
+    libraries="$libraries Qt5DBus"
+fi
 for l in $libraries ; do
     printf "checking for ${l} library... "
     pkg-config --libs $l 2>/dev/null 1>/dev/null

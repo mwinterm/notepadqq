@@ -1,4 +1,4 @@
-#!/usr/bin/env python2
+#!/usr/bin/env python3
 # -*- coding: utf-8 -*-
 """
 finish the job started by macdeployqtfix
@@ -38,13 +38,16 @@ def run_and_get_output(popen_args):
 
         proc = Popen(popen_args, stdin=PIPE, stdout=PIPE, stderr=PIPE)
         stdout, stderr = proc.communicate(b'')
-        proc_out = process_output(stdout, stderr, proc.returncode)
+        proc_out = process_output(
+            stdout.decode('utf-8', errors='replace'),
+            stderr.decode('utf-8', errors='replace'),
+            proc.returncode)
 
         GlobalConfig.logger.debug('\tprocess_output: {0}'.format(proc_out))
         return proc_out
     except Exception as exc:
         GlobalConfig.logger.error('\texception: {0}'.format(exc))
-        return process_output('', exc.message, -1)
+        return process_output('', str(exc), -1)
 
 
 def get_dependencies(filename):

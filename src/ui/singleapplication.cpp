@@ -1,6 +1,6 @@
 #include "include/singleapplication.h"
 
-#ifndef USE_DBUS
+#if !defined(USE_DBUS) || defined(Q_OS_MACX)
 #include "include/localcommunication.h"
 
 #include <QDataStream>
@@ -24,7 +24,7 @@ SingleApplication::SingleApplication(int &argc, char **argv) :
 {
 }
 
-#ifdef USE_DBUS
+#if defined(USE_DBUS) && !defined(Q_OS_MACX)
 
 #include <QtCore/QCoreApplication>
 #include <QtDBus/QtDBus>
@@ -71,7 +71,7 @@ void SingleApplication::receive(const QString& workingDirectory, const QStringLi
 }
 
 
-#else //ifdef USE_DBUS
+#else // !defined(USE_DBUS) || defined(Q_OS_MACX)
 
 /* ========= PROTOCOLS ===========
  *
@@ -218,4 +218,4 @@ bool SingleApplication::attachToOtherInstance()
     return false;
 }
 
-#endif //ifdef USE_DBUS
+#endif // USE_DBUS && !Q_OS_MACX

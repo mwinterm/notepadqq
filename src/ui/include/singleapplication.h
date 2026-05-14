@@ -2,7 +2,7 @@
 #define SINGLEAPPLICATION_H
 
 #include <QApplication>
-#ifndef USE_DBUS
+#if !defined(USE_DBUS) || defined(Q_OS_MACX)
 #include <QLocalServer>
 #endif
 /**
@@ -27,7 +27,7 @@ public:
 signals:
     void receivedArguments(const QString &workingDirectory, const QStringList &arguments);
 
-#ifdef USE_DBUS
+#if defined(USE_DBUS) && !defined(Q_OS_MACX)
 public slots:
     Q_SCRIPTABLE void receive(const QString& workingDirectory, const QStringList& arguments);
 #else

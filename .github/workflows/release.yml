@@ -1,8 +1,13 @@
-name: Release
+name: Build & Release
 
 on:
   release:
     types: [published]
+  push:
+    branches: [master, macos-port]
+    tags: ['v*']
+  pull_request:
+    branches: [master, macos-port]
   workflow_dispatch:
     inputs:
       tag:

@@ -111,13 +111,13 @@ jobs:
 
       - name: Attach to GitHub Release
         if: github.event_name == 'release'
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           files: out/release/Notepadqq-*.dmg
 
       - name: Create GitHub Release
         if: github.event_name == 'workflow_dispatch' && inputs.create_release
-        uses: softprops/action-gh-release@v2
+        uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ steps.version.outputs.version }}
           name: Notepadqq ${{ steps.version.outputs.version }}

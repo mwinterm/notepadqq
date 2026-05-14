@@ -47,7 +47,7 @@ jobs:
             libfuse2
           # Locate qmake6 and lrelease6
           QMAKE="$(command -v qmake6 2>/dev/null || command -v qmake 2>/dev/null)"
-          LRELEASE="$(command -v lrelease6 2>/dev/null || command -v lrelease 2>/dev/null || echo /usr/lib/qt6/bin/lrelease)"
+          LRELEASE="$(command -v lrelease6 2>/dev/null || echo /usr/lib/qt6/bin/lrelease)"
           echo "QMAKE=${QMAKE}" >> "$GITHUB_ENV"
           echo "LRELEASE=${LRELEASE}" >> "$GITHUB_ENV"
 

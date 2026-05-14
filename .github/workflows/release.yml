@@ -1,4 +1,4 @@
-name: Build macOS (Apple Silicon)
+name: Build & Release
 
 on:
   push:
@@ -14,7 +14,7 @@ on:
         description: 'Version tag (e.g. v1.0.0)'
         required: false
       create_release:
-        description: 'Create a GitHub release with the DMG'
+        description: 'Create a GitHub release'
         type: boolean
         default: false
 
@@ -22,6 +22,95 @@ permissions:
   contents: write
 
 jobs:
+  build-linux:
+    name: Build Linux AppImage (x86_64)
+    runs-on: ubuntu-22.04
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install dependencies (Qt 6)
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends \
+            build-essential pkg-config \
+            qt6-base-dev qt6-base-dev-tools qt6-tools-dev qt6-tools-dev-tools \
+            qt6-webengine-dev qt6-webengine-dev-tools \
+            libqt6websockets6-dev libqt6svg6-dev libqt6core5compat6-dev \
+            libqt6webchannel6-dev \
+            libuchardet-dev \
+            libgl1-mesa-dev \
+            libfuse2
+          # Locate qmake6 and lrelease6
+          QMAKE="$(command -v qmake6 2>/dev/null || command -v qmake 2>/dev/null)"
+          LRELEASE="$(command -v lrelease6 2>/dev/null || command -v lrelease 2>/dev/null)"
+          echo "QMAKE=${QMAKE}" >> "$GITHUB_ENV"
+          echo "LRELEASE=${LRELEASE}" >> "$GITHUB_ENV"
+
+      - name: Configure
+        run: |
+          ./configure \
+            --prefix=/usr \
+            --qmake="${QMAKE}" \
+            --lrelease="${LRELEASE}"
+
+      - name: Build
+        run: make -j$(nproc)
+
+      - name: Install to AppDir
+        run: make install INSTALL_ROOT="$PWD/AppDir"
+
+      - name: Resolve version
+        id: version
+        run: |
+          if [ -n "${{ github.event.release.tag_name }}" ]; then
+            VERSION="${{ github.event.release.tag_name }}"
+          elif [ -n "${{ github.event.inputs.tag }}" ]; then
+            VERSION="${{ github.event.inputs.tag }}"
+          else
+            VERSION="$(git describe --tags --always)"
+          fi
+          VERSION="${VERSION#v}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Create AppImage
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          # Download linuxdeployqt
+          wget -q "https://github.com/probonopd/linuxdeployqt/releases/download/continuous/linuxdeployqt-continuous-x86_64.AppImage" -O linuxdeployqt
+          chmod +x linuxdeployqt
+
+          # Create desktop entry and icon in AppDir if not already installed
+          mkdir -p AppDir/usr/share/applications AppDir/usr/share/icons/hicolor/scalable/apps
+          cp support_files/shortcuts/notepadqq.desktop AppDir/usr/share/applications/
+          cp support_files/icons/hicolor/scalable/apps/notepadqq.svg AppDir/usr/share/icons/hicolor/scalable/apps/ 2>/dev/null || true
+
+          # Run linuxdeployqt
+          ./linuxdeployqt AppDir/usr/share/applications/notepadqq.desktop \
+            -executable=AppDir/usr/lib/notepadqq/notepadqq-bin \
+            -appimage \
+            -qmake="${QMAKE}" \
+            -extra-plugins=webenginecore,websockets,webchannel
+
+      - name: Rename AppImage
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          mv Notepadqq-*.AppImage "Notepadqq-${VERSION}-linux-x86_64.AppImage" 2>/dev/null || \
+          mv notepadqq-*.AppImage "Notepadqq-${VERSION}-linux-x86_64.AppImage" 2>/dev/null || \
+          mv *.AppImage "Notepadqq-${VERSION}-linux-x86_64.AppImage"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: notepadqq-linux-x86_64-appimage
+          path: Notepadqq-*.AppImage
+          if-no-files-found: error
+
   build-macos:
     name: Build macOS DMG (arm64)
     runs-on: macos-14          # Apple Silicon (M1) runner
@@ -115,12 +204,35 @@ jobs:
         with:
           files: out/release/Notepadqq-*.dmg
 
+  release:
+    name: Publish Release
+    if: github.event_name == 'workflow_dispatch' && inputs.create_release
+    needs: [build-linux, build-macos]
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download all artifacts
+        uses: actions/download-artifact@v6
+        with:
+          path: artifacts
+          merge-multiple: true
+
+      - name: Resolve version
+        id: version
+        run: |
+          # Extract version from artifact filename
+          VERSION="$(ls artifacts/Notepadqq-*-macos-arm64.dmg 2>/dev/null | head -1 | sed 's/.*Notepadqq-\(.*\)-macos-arm64.dmg/\1/')"
+          if [ -z "$VERSION" ]; then
+            VERSION="$(ls artifacts/Notepadqq-*-linux-x86_64.AppImage 2>/dev/null | head -1 | sed 's/.*Notepadqq-\(.*\)-linux-x86_64.AppImage/\1/')"
+          fi
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
       - name: Create GitHub Release
-        if: github.event_name == 'workflow_dispatch' && inputs.create_release
         uses: softprops/action-gh-release@v3
         with:
           tag_name: v${{ steps.version.outputs.version }}
           name: Notepadqq ${{ steps.version.outputs.version }}
           draft: true
           generate_release_notes: true
-          files: out/release/Notepadqq-*.dmg
+          files: |
+            artifacts/Notepadqq-*.dmg
+            artifacts/Notepadqq-*.AppImage

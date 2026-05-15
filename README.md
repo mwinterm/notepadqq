@@ -1,17 +1,23 @@
-# <img src="https://user-images.githubusercontent.com/4319621/36906314-e3f99680-1e35-11e8-90fd-f959c9641f36.png" alt="Notepadqq" width="32" height="32" /> Notepadqq [![Build Status](https://travis-ci.com/notepadqq/notepadqq.svg?branch=master)](https://travis-ci.com/notepadqq/notepadqq) [![notepadqq](https://snapcraft.io/notepadqq/badge.svg)](https://snapcraft.io/notepadqq)
+# <img src="https://user-images.githubusercontent.com/4319621/36906314-e3f99680-1e35-11e8-90fd-f959c9641f36.png" alt="Notepadqq" width="32" height="32" /> Notepadqq
 
-> [!WARNING]  
-> This project is not actively maintained anymore. New maintainers are welcome.
->
-> It has been reported that with the most recent OS/Qt versions, the program can crash unexpectedly. Use this at your own risk.
-> 
->  -- Daniele
+> [!NOTE]
+> This fork modernizes Notepadqq with Qt 6 and CMake, and adds cross-platform CI builds for **Linux**, **macOS** (Apple Silicon), and **Windows**.
+
+### What's changed in this fork
+
+- **Qt 6** — migrated from Qt 5 to Qt 6 (WebEngine, WebChannel, WebSockets, Core5Compat)
+- **CMake build system** — replaced qmake with CMake 3.16+; the `./configure` && `make` workflow still works
+- **macOS support** — native Apple Silicon (arm64) builds, DMG packaging via `macdeployqt`
+- **Windows support** — MSVC x64 builds with vcpkg for dependencies, ZIP packaging via `windeployqt`
+- **Linux AppImage** — built with `linuxdeploy` + Qt plugin (Qt6-compatible)
+- **GitHub Actions CI** — separate workflows for each platform, plus a combined release workflow
+- **Cleanup** — removed obsolete Travis CI config, Dockerfile, and qmake project files
 
 ### Links
 
 * [What is it?](#what-is-it)
 * [Build it yourself](#build-it-yourself)
-* [Download it](#distribution-packages)
+* [Download it](#download)
 
 #### What is it?
 
@@ -24,84 +30,56 @@ Please visit our [Wiki](https://github.com/notepadqq/notepadqq/wiki) for more sc
 Build it yourself
 -----
 
-| Build dependencies    | Dependencies      |
-|-----------------------|-------------------|
-| Qt 5.6 or higher      | Qt 5.6 or higher  |
-| qtwebengine5-dev      | qtwebengine5      |
-| libqt5websockets5-dev | libqt5websockets5 |
-| libqt5svg5-dev        | libqt5svg5        |
-| qttools5-dev-tools    | coreutils         |
-| libuchardet-dev       | libuchardet       |
-| pkg-config            |                   |
+#### Dependencies
+
+| Build dependencies         | Runtime dependencies    |
+|----------------------------|-------------------------|
+| CMake 3.16+                | Qt 6                    |
+| Qt 6 (Core, Gui, Widgets, WebEngine, WebChannel, WebSockets, Svg, PrintSupport, Core5Compat) | libuchardet |
+| pkg-config (Linux/macOS)   |                         |
+| libuchardet-dev            |                         |
+| C++17 compiler             |                         |
 
 #### Get the source
 
     $ git clone --recursive https://github.com/notepadqq/notepadqq.git
     $ cd notepadqq
 
-#### Build
+#### Build (Linux / macOS)
 
     notepadqq$ ./configure --prefix /usr
     notepadqq$ make
 
-If you encounter errors make sure to have the necessary libraries installed. For Ubuntu you can do that using apt-get:
+##### Ubuntu / Debian
 
-    sudo apt-get install qttools5-dev-tools qtwebengine5-dev libqt5websockets5-dev libqt5svg5 libqt5svg5-dev libuchardet-dev pkg-config
+    sudo apt-get install build-essential cmake pkg-config \
+      qt6-base-dev qt6-base-dev-tools qt6-tools-dev qt6-tools-dev-tools \
+      qt6-webengine-dev qt6-webengine-dev-tools qt6-l10n-tools \
+      libqt6websockets6-dev libqt6svg6-dev libqt6core5compat6-dev \
+      libqt6webchannel6-dev libqt6opengl6-dev \
+      libuchardet-dev libgl1-mesa-dev
 
-For CentOS:
+##### macOS (Homebrew)
 
-    sudo yum install -y qt5-qtbase-devel qt5-qttools-devel qt5-qtwebengine-devel qt5-qtwebsockets-devel qt5-qtsvg-devel uchardet qt5-qtwebchannel-devel pkgconfig
+    brew install qt cmake uchardet pkg-config
 
-#### Install
+#### Build (Windows)
 
-You can run notepadqq from its build output folder. If however you want to install it, first build it
-by following the above steps, then run:
+Use CMake directly with MSVC and vcpkg:
+
+    vcpkg install uchardet:x64-windows
+    cmake -S . -B build -DCMAKE_TOOLCHAIN_FILE="%VCPKG_INSTALLATION_ROOT%\scripts\buildsystems\vcpkg.cmake"
+    cmake --build build --config Release
+
+#### Install (Linux)
 
     notepadqq$ sudo make install
 
-#### Qt
+Download
+--------
 
-If the newest version of Qt isn't available on your distribution, you can use the [online installer](http://www.qt.io/download-open-source) to get the latest libraries and install them into your home directory (`$HOME/Qt`). Notepadqq will automatically use them.
+Pre-built binaries for each platform are available from [GitHub Releases](https://github.com/notepadqq/notepadqq/releases) and CI artifacts.
 
-Distribution Packages
----------------------
-
-#### Ubuntu, Debian, and others:
-
-    sudo apt install notepadqq
-
-#### Snap
-
-To install the latest stable version:
+#### Snap (Linux)
 
     sudo snap install notepadqq
-
-You don't have the `snap` command? Follow the instructions at https://docs.snapcraft.io/core/install and then install Notepadqq as shown above.
-
-You can follow the unstable development releases from the "edge" channel.
-
-#### Arch Linux (community-maintained)
-Notepadqq is available from Arch's [community repositories](https://www.archlinux.org/packages/community/x86_64/notepadqq/). To install using pacman:
-
-    sudo pacman -S notepadqq
-
-Alternatively it can be found in the AUR:
-
- * Development (git version): [notepadqq-git](https://aur.archlinux.org/packages/notepadqq-git/)
-
-#### OpenSUSE (community-maintained)
-Notepadqq is avilable in OpenSUSE's main repository:
-
-     sudo zypper in notepadqq
-
-#### Solus (community-maintained)
-Notepadqq is available in the `shannon` (stable) repository:
-
-     sudo eopkg it notepadqq
-
-#### Others
-Use a package for a compatible distribution, or build from [source](https://github.com/notepadqq/notepadqq.git).
-If you want to submit a package: https://github.com/notepadqq/notepadqq-packaging
-
-#### Compiling on macOS
-Instructions can be found [here](https://github.com/notepadqq/notepadqq/wiki/Compiling-Notepadqq-on-macOS).

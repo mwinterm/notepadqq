@@ -10,19 +10,14 @@ Thumbs.db
 *.bak
 *.old
 
+# Build output
 /build
 /out
 
-# Legacy qmake-generated files
-/src/ui/Makefile
+# Legacy qmake artifacts
 /.qmake.stash
+*.pro.user
+*.pro.user.*
 
-/src/ui/ui.pro.user
-/src/ui/ui.pro.user.*
-/notepadqq.pro.user
-
-/.qmake.stash
-/src/ui-tests/moc_predefs.h
-/src/ui-tests/ui-tests.app/
-
+# Generated translation files
 /src/translations/*.qm

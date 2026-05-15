@@ -66,12 +66,12 @@ jobs:
         run: |
           cd out/release
           QT_CELLAR="$(brew --cellar qt)/"*
-          python3 ../../.travis/tools/macdeployqtfix/macdeployqtfix.py \
+          python3 ../../build-tools/macdeployqtfix/macdeployqtfix.py \
             notepadqq.app/Contents/MacOS/notepadqq \
             ${QT_CELLAR}
           HELPER_PATH="$(find notepadqq.app -name QtWebEngineProcess -type f 2>/dev/null | head -1)"
           if [ -n "$HELPER_PATH" ]; then
-            python3 ../../.travis/tools/macdeployqtfix/macdeployqtfix.py \
+            python3 ../../build-tools/macdeployqtfix/macdeployqtfix.py \
               "$HELPER_PATH" \
               ${QT_CELLAR}
           fi

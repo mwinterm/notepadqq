@@ -7,14 +7,13 @@ description: |
 grade: stable
 confinement: classic
 icon: support_files/icons/hicolor/scalable/apps/notepadqq.svg
-base: core18
+base: core22
 
 apps:
   notepadqq: 
     command: bin/desktop-launch $SNAP/usr/local/lib/notepadqq/notepadqq-bin
     environment:
       DISABLE_WAYLAND: 1  # See https://github.com/notepadqq/notepadqq/issues/806
-      QT_XCB_FORCE_SOFTWARE_OPENGL: 1  # For bug in Qt 5.9 + Nouveau. See https://bugreports.qt.io/browse/QTBUG-41242
     desktop: usr/local/share/applications/notepadqq.desktop
 #   plugs:  # Plugs are not needed for classic confinement
 #     - browser-support
@@ -40,23 +39,18 @@ parts:
     make-parameters: ["FLAVOR=qt5"]
     build-packages:
       - build-essential
-      - qtbase5-dev
+      - qt6-base-dev
       - dpkg-dev
     stage-packages:
       - libxkbcommon0
       - ttf-ubuntu-font-family
       - dmz-cursor-theme
-      - light-themes
       - adwaita-icon-theme
       - gnome-themes-standard
       - shared-mime-info
-      - libqt5gui5
       - libgdk-pixbuf2.0-0
-      - libqt5svg5 # for loading icon themes which are svg
-      - try: [appmenu-qt5] # not available on core18
       - locales-all
       - xdg-user-dirs
-      - fcitx-frontend-qt5
 
   fixicon:
     plugin: nil
@@ -77,48 +71,36 @@ parts:
 
   my-part:
     build-packages:
+      - cmake
       - pkg-config
-      - qtbase5-dev
-      - qtwebengine5-dev
-      - libqt5websockets5-dev
-      - libqt5svg5-dev
-      - qttools5-dev-tools
+      - qt6-base-dev
+      - qt6-base-dev-tools
+      - qt6-tools-dev
+      - qt6-tools-dev-tools
+      - qt6-webengine-dev
+      - qt6-webengine-dev-tools
+      - qt6-l10n-tools
+      - libqt6websockets6-dev
+      - libqt6svg6-dev
+      - libqt6core5compat6-dev
+      - libqt6webchannel6-dev
+      - libqt6opengl6-dev
       - libuchardet-dev
+      - libgl1-mesa-dev
     stage-packages: 
       - adwaita-icon-theme-full
-      - bamfdaemon
       - coreutils
       - desktop-file-utils
-      - gnome-menus
-      - gtk2-engines-pixbuf
       - hicolor-icon-theme
       - libatk-adaptor
       - libcanberra-gtk-module
-      - libgail-common
-      - libqt5svg5
-      - light-themes
-      - man-db
-      - mime-support
-      - numix-gtk-theme
-      - overlay-scrollbar-gtk2
-      - packagekit-gtk3-module
-      - qtbase5-dev 
-      - unity-gtk-module-common
-      - unity-schemas
-      - libnss3
       - libcanberra-gtk3-module
-      - libqt5webengine5
-      - libqt5quickwidgets5
-      - libqt5webenginewidgets5
+      - libnss3
       - libuchardet0
-      - qtwayland5
       
     source: . 
     after: [desktop-qt5]
-    plugin: qmake
-    options:
-      - DEFINES+=BUILD_SNAP
-
-    override-build: |
-      sed -i '/.*QMAKE_RPATH=$/d' src/ui/ui.pro  # Hack for forcing the use of RPATH
-      snapcraftctl build
+    plugin: cmake
+    cmake-parameters:
+      - -DCMAKE_INSTALL_PREFIX=/usr/local
+      - -DCMAKE_BUILD_TYPE=Release

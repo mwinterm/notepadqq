@@ -1,6 +1,6 @@
 {
   "name": "Notepadqq Linux Dev",
-  "image": "mcr.microsoft.com/devcontainers/cpp:ubuntu-22.04",
+  "image": "mcr.microsoft.com/devcontainers/cpp:ubuntu-24.04",
   "features": {
     "ghcr.io/devcontainers/features/cmake:1": {}
   },

@@ -260,7 +260,13 @@ else()
         set(BIN_OUT "${OUT_DIR}/release/lib")
     endif()
 endif()
-set_target_properties(${EXE_NAME} PROPERTIES RUNTIME_OUTPUT_DIRECTORY "${BIN_OUT}")
+set_target_properties(${EXE_NAME} PROPERTIES
+    RUNTIME_OUTPUT_DIRECTORY "${BIN_OUT}"
+    RUNTIME_OUTPUT_DIRECTORY_DEBUG "${BIN_OUT}"
+    RUNTIME_OUTPUT_DIRECTORY_RELEASE "${BIN_OUT}"
+    RUNTIME_OUTPUT_DIRECTORY_RELWITHDEBINFO "${BIN_OUT}"
+    RUNTIME_OUTPUT_DIRECTORY_MINSIZEREL "${BIN_OUT}"
+)
 
 # ---------- copy editor & extension_tools at build time ----------
 if(APPLE)

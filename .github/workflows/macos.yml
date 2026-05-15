@@ -2,10 +2,10 @@ name: macOS Build
 
 on:
   push:
-    branches: [master, macos-port]
+    branches: [master]
     tags: ['v*']
   pull_request:
-    branches: [master, macos-port]
+    branches: [master]
   release:
     types: [published]
   workflow_dispatch:

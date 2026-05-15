@@ -2,10 +2,10 @@ name: Build & Release
 
 on:
   push:
-    branches: [master, macos-port]
+    branches: [master]
     tags: ['v*']
   pull_request:
-    branches: [master, macos-port]
+    branches: [master]
   release:
     types: [published]
   workflow_dispatch:
@@ -209,10 +209,81 @@ jobs:
         with:
           files: out/release/Notepadqq-*.dmg
 
+  build-windows:
+    name: Build Windows ZIP (x64)
+    runs-on: windows-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          submodules: recursive
+          fetch-depth: 0
+
+      - name: Install Qt 6
+        uses: jurplel/install-qt-action@v4
+        with:
+          version: '6.7.*'
+          arch: win64_msvc2019_64
+          modules: qtwebengine qtwebchannel qtwebsockets qtpositioning qt5compat
+
+      - name: Install uchardet (vcpkg)
+        run: vcpkg install uchardet:x64-windows
+
+      - name: Configure
+        shell: cmd
+        run: |
+          cmake -S . -B build ^
+            -DCMAKE_BUILD_TYPE=Release ^
+            -DCMAKE_PREFIX_PATH="%Qt6_DIR%" ^
+            -DCMAKE_TOOLCHAIN_FILE="%VCPKG_INSTALLATION_ROOT%\scripts\buildsystems\vcpkg.cmake"
+
+      - name: Build
+        run: cmake --build build --config Release -j $env:NUMBER_OF_PROCESSORS
+
+      - name: Bundle with windeployqt
+        shell: cmd
+        run: |
+          cd out\release
+          windeployqt notepadqq.exe --release --no-translations --no-compiler-runtime
+
+      - name: Resolve version
+        id: version
+        shell: bash
+        run: |
+          if [ -n "${{ github.event.release.tag_name }}" ]; then
+            VERSION="${{ github.event.release.tag_name }}"
+          elif [ -n "${{ github.event.inputs.tag }}" ]; then
+            VERSION="${{ github.event.inputs.tag }}"
+          else
+            VERSION="$(git describe --tags --always)"
+          fi
+          VERSION="${VERSION#v}"
+          echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
+
+      - name: Create ZIP
+        shell: pwsh
+        env:
+          VERSION: ${{ steps.version.outputs.version }}
+        run: |
+          Compress-Archive -Path out\release\* -DestinationPath "Notepadqq-${env:VERSION}-windows-x64.zip"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@v6
+        with:
+          name: notepadqq-windows-x64-zip
+          path: Notepadqq-*.zip
+          if-no-files-found: error
+
+      - name: Attach to GitHub Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v3
+        with:
+          files: Notepadqq-*.zip
+
   release:
     name: Publish Release
     if: github.event_name == 'workflow_dispatch' && inputs.create_release
-    needs: [build-linux, build-macos]
+    needs: [build-linux, build-macos, build-windows]
     runs-on: ubuntu-latest
     steps:
       - name: Download all artifacts
@@ -229,6 +300,9 @@ jobs:
           if [ -z "$VERSION" ]; then
             VERSION="$(ls artifacts/Notepadqq-*-linux-x86_64.AppImage 2>/dev/null | head -1 | sed 's/.*Notepadqq-\(.*\)-linux-x86_64.AppImage/\1/')"
           fi
+          if [ -z "$VERSION" ]; then
+            VERSION="$(ls artifacts/Notepadqq-*-windows-x64.zip 2>/dev/null | head -1 | sed 's/.*Notepadqq-\(.*\)-windows-x64.zip/\1/')"
+          fi
           echo "version=${VERSION}" >> "$GITHUB_OUTPUT"
 
       - name: Create GitHub Release
@@ -241,3 +315,4 @@ jobs:
           files: |
             artifacts/Notepadqq-*.dmg
             artifacts/Notepadqq-*.AppImage
+            artifacts/Notepadqq-*.zip

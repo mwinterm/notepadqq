@@ -9,7 +9,7 @@ endif()
 
 if(WIN32)
     # On Windows (vcpkg), use find_path/find_library for uchardet
-    find_path(UCHARDET_INCLUDE_DIR uchardet/uchardet.h)
+    find_path(UCHARDET_INCLUDE_DIR uchardet.h PATH_SUFFIXES uchardet)
     find_library(UCHARDET_LIBRARY uchardet)
     if(NOT UCHARDET_INCLUDE_DIR OR NOT UCHARDET_LIBRARY)
         message(FATAL_ERROR "uchardet not found. Install via vcpkg: vcpkg install uchardet")

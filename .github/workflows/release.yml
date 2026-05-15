@@ -86,6 +86,12 @@ jobs:
           cp support_files/shortcuts/notepadqq.desktop AppDir/usr/share/applications/
           cp support_files/icons/hicolor/scalable/apps/notepadqq.svg AppDir/usr/share/icons/hicolor/scalable/apps/ 2>/dev/null || true
 
+          # Create translations dir so linuxdeploy-plugin-qt can place symlinks
+          mkdir -p AppDir/usr/translations
+
+          # Remove AppStream metadata to avoid strict appstreamcli validation
+          rm -f AppDir/usr/share/metainfo/*.xml
+
           # The installed launcher at usr/bin/notepadqq is a shell script;
           # replace it with a symlink to the real binary so linuxdeploy can
           # trace ELF dependencies.

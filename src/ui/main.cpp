@@ -17,7 +17,9 @@
 #include <QTranslator>
 #include <QtGlobal>
 
+#if defined(Q_OS_UNIX)
 #include <unistd.h> // For getuid
+#endif
 
 #ifdef QT_DEBUG
 #include <QElapsedTimer>
@@ -94,6 +96,7 @@ int main(int argc, char *argv[])
         return EXIT_SUCCESS;
     }
 
+#if defined(Q_OS_UNIX)
     // Check if we're running as root
     if( getuid() == 0 && !parser->isSet("allow-root") ) {
         qWarning() << QObject::tr(
@@ -102,6 +105,7 @@ int main(int argc, char *argv[])
 
         return EXIT_SUCCESS;
     }
+#endif
 
     if (a.attachToOtherInstance()) {
         return EXIT_SUCCESS;
